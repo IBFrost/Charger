@@ -1,9 +1,9 @@
 ## Interface: 11505
 ## Title: Charger
-## SavedVariables: ChargerEnabled, ChargerDebug, ChargerMacroID
+## SavedVariables: ChargerEnabled, ChargerDebug, ChargerMacroID, ChargerFirstRunComplete
 ## Notes: Automatically sets up a macro to help folks with charge get around!
 ## Author: IBFrost
-## Version: 1.0.0
+## Version: 1.0.1
 ## DefaultState: enabled
 
 Charger.lua

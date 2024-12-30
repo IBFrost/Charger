@@ -53,8 +53,7 @@ ChargerFrame:SetScript('OnEvent', function(self, event, ...)
     self[event](...)
 end)
 
-local enabled = false
-local debugMode = false
+local enabled, debugMode, firstRunComplete
 
 function ChargerFrame:ReportDebugInfo(type, info, force) -- force is unused unless it is set to TRUE, which overrides debug mode to ALWAYS print the message.
     if not debugMode and not force then
@@ -77,6 +76,7 @@ local function ToggleUpdates()
     enabled = not enabled
     ChargerEnabled = enabled
 end
+
 
 -- SLASH COMMAND REGISTRATION
 SLASH_CHARGER1 = "/charger"
@@ -118,6 +118,7 @@ end
 
 -- EVENT REGISTRATION
 ChargerFrame:Register('ADDON_LOADED', function()
+    firstRunComplete = ChargerFirstRunComplete or false
     debugMode = ChargerDebug or false
     enabled = ChargerEnabled or true
     macroID = ChargerMacroID or nil
@@ -149,6 +150,7 @@ function ChargerFrame:UpdateMacro(event)
     if not enabled then
         return
     end
+
     local currentZone
     local isInInstance, _ = IsInInstance()
     if isInInstance then
@@ -181,13 +183,23 @@ function ChargerFrame:UpdateMacro(event)
     if debugMode then
         ChargerFrame:ReportDebugInfo("GOOD", "Macro update triggered for " .. currentZone .. "...")
     end
+
     if inCombat then
-        ChargerFrame:ReportDebugInfo("BAD", "Player in combat (inCombat = true). Aborting...")
+        if not firstRunComplete then
+            ChargerFrame:ReportDebugInfo("OTHER", "I'll get started once you're out of combat!", not firstRunComplete)
+        else
+            ChargerFrame:ReportDebugInfo("BAD", "Player in combat (inCombat = true). Aborting...")
+        end
         combatHold = true
         return
     end
+
     if not macroID then 
-        ChargerFrame:ReportDebugInfo("BAD", "No Macro found! Registering a macro ID...")
+        if not firstRunComplete then
+            ChargerFrame:ReportDebugInfo("GOOD", "To get started I'm going to try to register the macro: |cffffffff!Charger", not firstRunComplete)
+        else
+            ChargerFrame:ReportDebugInfo("BAD", "No Macro found! Registering a macro ID...")
+        end
         ChargerFrame:RegisterMacro(event)
     else
         local macroIDName, _, _ = GetMacroInfo(macroID)
@@ -204,41 +216,48 @@ function ChargerFrame:UpdateMacro(event)
             end
         end
     end
+
     if not macroID then
-        ChargerFrame:ReportDebugInfo("BAD", "Macro failed to build!")
+        ChargerFrame:ReportDebugInfo("BAD", "Macro failed to build!", not firstRunComplete)
         local globalSlots, localSlots = GetNumMacros()
         if globalSlots >= 120 then
             ChargerFrame:ReportDebugInfo("BAD",
                 "Insufficient macro slots available! Aborting and disabling to lower overhead... (use `/charger toggle` to re-enable)",
                 true)
             enabled = false
+            ChargerEnabled = enabled
         end
         return
     end
 
     local critterNames = ZoneMap[currentZone]
     if not critterNames then
-        ChargerFrame:ReportDebugInfo("BAD", "No critters found for zone: " .. currentZone .. ". Aborting...")
+        ChargerFrame:ReportDebugInfo("BAD", "No critters found for zone: " .. currentZone .. ". Aborting...", not firstRunComplete)
         return
     end
+
     local macroString = "#showcooldown Charge\n"
     local reportString = "("
     for index, value in ipairs(critterNames) do
         macroString = macroString .. "/tar " .. value .. "\n"
         reportString = reportString .. " " .. value .. " "
     end
+
     macroString = macroString .. "/cast [exists, nodead] Charge" -- [exists] used to prevent accidental use on nearby hostile enemies.
     reportString = reportString .. ")"
-    ChargerFrame:ReportDebugInfo("GOOD", "Attempting to update macro to target " .. reportString)
+    ChargerFrame:ReportDebugInfo("GOOD", "Attempting to update macro to target " .. reportString, not firstRunComplete)
     EditMacro(macroID, nil, nil, macroString)
     lastZoneUpdate = currentZone
-    ChargerFrame:ReportDebugInfo("GOOD", "Successfully edited macro")
+    ChargerFrame:ReportDebugInfo("GOOD", "Successfully edited macro!", not firstRunComplete)
+    firstRunComplete = true
+    ChargerFirstRunComplete = firstRunComplete
 end
 
 function ChargerFrame:RegisterMacro(event)
     macroID = CreateMacro("!Charger", 132171, "/run print('Macro not built yet...')", false)
     if macroID then
         ChargerMacroID = macroID
+        ChargerFrame:ReportDebugInfo("GOOD", "Successfully registered macro: |cffffffff!Charger|r!", not firstRunComplete)
     end
 end
 
